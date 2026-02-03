@@ -8,6 +8,18 @@ CREATE TABLE merchants (
   name TEXT NOT NULL
 );
 
+-- Users table: authentication & profile (store password hashes, not plaintext)
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  npp TEXT, -- employee number or internal identifier
+  password_hash TEXT NOT NULL,
+  name TEXT NOT NULL,
+  phone VARCHAR(32),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  last_login TIMESTAMP WITH TIME ZONE
+);
+
 CREATE TABLE transactions (
   id UUID PRIMARY KEY,
   merchant_id UUID REFERENCES merchants(id),
@@ -137,6 +149,25 @@ CREATE TABLE audit_logs (
   "checksum":"sha256:..."
 }
 ```
+
+**Auth / User DTOs**
+
+**LoginRequest**
+```json
+{ "username": "jdoe", "password": "s3cr3t" }
+```
+
+**LoginResponse**
+```json
+{ "access_token": "<jwt>", "token_type": "Bearer", "expires_in": 3600, "user": { "id": "u1", "username": "jdoe", "npp": "12345", "name": "John Doe", "phone": "+6281..." } }
+```
+
+**UserCreateDTO / UserDTO**
+```json
+{ "username": "jdoe", "npp": "12345", "password": "s3cr3t", "name": "John Doe", "phone": "+6281..." }
+```
+
+> Security notes: store only `password_hash` (bcrypt/argon2). Never return password or hash in API responses. Use short-lived access tokens (JWT) and consider refresh tokens for long sessions. Protect auth endpoints with rate-limiting and monitoring.
 
 ---
 

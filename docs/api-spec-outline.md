@@ -20,6 +20,14 @@
   - POST /api/payments/{id}/evidence — upload evidence pointer
 - **/api/reports**
   - GET /api/reports/transactions — export CSV/JSON
+- **/api/auth**
+  - POST /api/auth/login — login (LoginRequest → LoginResponse; returns JWT)
+  - POST /api/auth/register — register new user (UserCreateDTO) 
+  - GET /api/auth/me — get current user (requires Bearer token)
+- **/api/users**
+  - POST /api/users — create user (admin / registration)
+  - GET /api/users/{id} — get user profile (self or admin)
+  - PUT /api/users/{id} — update user (self or admin)
 - **/api/webhooks**
   - POST /api/webhooks/events — outgoing event delivery
 
@@ -32,5 +40,8 @@
 ## Sample DTOs (referencing `docs/example-schemas.md`)
 - `TransactionCreateDTO` (merchant, ordered_at, currency, participants, items, discounts, fees)
 - `AllocationSnapshotDTO` (version, grand_total, lines[])
+- `LoginRequest` (`username`, `password`)
+- `LoginResponse` (`access_token`, `token_type`, `expires_in`, `user`)
+- `UserDTO` (`id`, `username`, `npp`, `name`, `phone`)
 
 > A minimal `openapi.yaml` skeleton is included at `openapi/openapi.yaml`.

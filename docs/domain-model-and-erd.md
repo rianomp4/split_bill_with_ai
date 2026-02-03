@@ -3,6 +3,7 @@
 **Goal:** Definisikan entitas inti, lifecycle, versioning, dan hubungannya.
 
 ## Core Entities (singkat)
+- **User** (id, username, npp, password_hash, name, phone, created_at, last_login)
 - **Merchant** (id, name)
 - **Transaction** (id, merchant_id, ordered_at, currency, notes, state, current_version)
 - **TransactionParticipant** (id, transaction_id, user_id, role, confirmed)
@@ -17,6 +18,13 @@
 
 ## Entity Details — kegunaan tiap entitas
 Berikut penjelasan singkat fungsi dan kegunaan setiap entitas dalam domain model.
+
+- **User**
+  - Identitas dan kredensial (username, npp, password_hash) plus profil (name, phone). `password_hash` harus menggunakan algoritma yang aman (bcrypt/argon2). Users berperan sebagai `actor` dalam audit, owner untuk bukti (EvidenceArtifact), dan pemilik per-participant/pembayaran.
+  - Kebijakan: jangan expose `password_hash` dalam API responses; gunakan JWT atau session untuk authentication, dan pertimbangkan rate-limiting pada endpoint login.
+
+- **Merchant**
+  - Menyimpan metadata pemilik/order source (mis. restoran). Digunakan untuk kebijakan spesifik merchant, pengaturan rounding/defaults, dan pengelompokan transaksi.
 
 - **Merchant**
   - Menyimpan metadata pemilik/order source (mis. restoran). Digunakan untuk kebijakan spesifik merchant, pengaturan rounding/defaults, dan pengelompokan transaksi.
@@ -57,6 +65,9 @@ Berikut penjelasan singkat fungsi dan kegunaan setiap entitas dalam domain model
 - All mutations write an `AuditLog` (append-only) with diffs and actor info.
 
 ## Relationships (textual)
+- User 1..* TransactionParticipant
+- User 1..* Payment
+- User 1..* EvidenceArtifact (owner)
 - Transaction 1..* TransactionParticipant
 - Participant 1..* OrderItem
 - Transaction 0..* Discount
@@ -72,13 +83,16 @@ Berikut penjelasan singkat fungsi dan kegunaan setiap entitas dalam domain model
 erDiagram
   MERCHANT ||--o{ TRANSACTION : owns
   TRANSACTION ||--o{ TRANSACTION_PARTICIPANT : has
+  USER ||--o{ TRANSACTION_PARTICIPANT : represents
   TRANSACTION ||--o{ ORDER_ITEM : includes
   TRANSACTION ||--o{ DISCOUNT : has
   TRANSACTION ||--o{ ADDITIONAL_FEE : has
   TRANSACTION ||--o{ ALLOCATION_SNAPSHOT : has
   ALLOCATION_SNAPSHOT ||--o{ ALLOCATION_LINE : includes
   TRANSACTION_PARTICIPANT ||--o{ PAYMENT : makes
+  USER ||--o{ PAYMENT : makes
   PAYMENT ||--o{ EVIDENCE_ARTIFACT : may_have
+  USER ||--o{ EVIDENCE_ARTIFACT : owns
   %% AUDIT_LOG references many entities (polymorphic)
 ```
 
