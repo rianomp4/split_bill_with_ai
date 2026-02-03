@@ -4,13 +4,16 @@
   "main": "dist/server.js",
   "license": "MIT",
   "scripts": {
+    "predev": "npm run prisma:generate && npm run prisma:dbpush",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc -p .",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
+    "prisma:dbpush": "prisma db push",
     "migrate:dev": "prisma migrate dev --name init",
     "migrate:deploy": "prisma migrate deploy"
   },
+
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",

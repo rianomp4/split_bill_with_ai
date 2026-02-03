@@ -8,138 +8,167 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(uuid())
-  username   String   @unique
-  npp        String?
-  passwordHash String
-  name       String
-  phone      String?
-  createdAt  DateTime @default(now())
-  lastLogin  DateTime?
-  participants TransactionParticipant[]
+  id                String                   @id @default(uuid())
+  username          String                   @unique
+  npp               String?
+  passwordHash      String                   @map("password_hash")
+  name              String
+  phone             String?
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  lastLogin         DateTime?                @map("last_login")
+  participants      TransactionParticipant[]
   evidenceArtifacts EvidenceArtifact[]
+  Transaction       Transaction[]
+
+  @@map("users")
 }
 
 model Merchant {
-  id   String @id @default(uuid())
-  name String @unique
+  id           String        @id @default(uuid())
+  name         String        @unique
   transactions Transaction[]
+
+  @@map("merchants")
 }
 
 model Transaction {
-  id              String   @id @default(uuid())
-  merchantId      String
-  merchant        Merchant @relation(fields: [merchantId], references: [id])
-  orderedAt       DateTime
-  currency        String
-  notes           String?
-  state           String   @default("DRAFT")
-  currentVersion  Int?
-  createdBy       String?
-  createdAt       DateTime @default(now())
-  participants    TransactionParticipant[]
-  items           OrderItem[]
-  discounts       Discount[]
-  fees            AdditionalFee[]
-  snapshots       AllocationSnapshot[]
+  id             String                   @id @default(uuid())
+  merchantId     String                   @map("merchant_id")
+  merchant       Merchant                 @relation(fields: [merchantId], references: [id])
+  orderedAt      DateTime                 @map("ordered_at")
+  currency       String
+  notes          String?
+  state          String                   @default("DRAFT")
+  currentVersion Int?                     @map("current_version")
+  createdBy      String?                  @map("created_by")
+  createdByUser  User?                    @relation(fields: [createdBy], references: [id])
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  participants   TransactionParticipant[]
+  items          OrderItem[]
+  discounts      Discount[]
+  fees           AdditionalFee[]
+  snapshots      AllocationSnapshot[]
+
+  @@map("transactions")
 }
 
 model TransactionParticipant {
-  id            String       @id @default(uuid())
-  transactionId String
-  transaction   Transaction  @relation(fields: [transactionId], references: [id])
-  userId        String
-  user          User         @relation(fields: [userId], references: [id])
-  role          String
-  confirmed     Boolean      @default(false)
+  id              String           @id @default(uuid())
+  transactionId   String           @map("transaction_id")
+  transaction     Transaction      @relation(fields: [transactionId], references: [id])
+  userId          String           @map("user_id")
+  user            User             @relation(fields: [userId], references: [id])
+  role            String
+  confirmed       Boolean          @default(false)
   allocationLines AllocationLine[]
-  payments      Payment[]
+  payments        Payment[]
+  OrderItem       OrderItem[]
+
+  @@map("transaction_participants")
 }
 
 model OrderItem {
-  id                  String  @id @default(uuid())
-  transactionId       String
-  transaction         Transaction @relation(fields: [transactionId], references: [id])
-  name                String
-  normalPrice         Decimal @db.Decimal(18, 2)
-  qty                 Int
-  ownerParticipantId  String?
+  id                 String                  @id @default(uuid())
+  transactionId      String                  @map("transaction_id")
+  transaction        Transaction             @relation(fields: [transactionId], references: [id])
+  name               String
+  normalPrice        Decimal                 @map("normal_price") @db.Decimal(18, 2)
+  qty                Int
+  ownerParticipantId String?                 @map("owner_participant_id")
+  ownerParticipant   TransactionParticipant? @relation(fields: [ownerParticipantId], references: [id])
+
+  @@map("order_items")
 }
 
 model Discount {
-  id            String  @id @default(uuid())
-  transactionId String
+  id            String      @id @default(uuid())
+  transactionId String      @map("transaction_id")
   transaction   Transaction @relation(fields: [transactionId], references: [id])
   type          String
   scope         String
-  percent       Decimal? @db.Decimal(6, 4)
-  amount        Decimal? @db.Decimal(18, 2)
-  priority      Int      @default(0)
-  enabled       Boolean  @default(true)
+  percent       Decimal?    @db.Decimal(6, 4)
+  amount        Decimal?    @db.Decimal(18, 2)
+  priority      Int         @default(0)
+  enabled       Boolean     @default(true)
+
+  @@map("discounts")
 }
 
 model AdditionalFee {
-  id            String  @id @default(uuid())
-  transactionId String
-  transaction   Transaction @relation(fields: [transactionId], references: [id])
-  type          String?
-  amount        Decimal @db.Decimal(18, 2)
-  allocationMethod String
+  id               String      @id @default(uuid())
+  transactionId    String      @map("transaction_id")
+  transaction      Transaction @relation(fields: [transactionId], references: [id])
+  type             String?
+  amount           Decimal     @db.Decimal(18, 2)
+  allocationMethod String      @map("allocation_method")
+
+  @@map("additional_fees")
 }
 
 model AllocationSnapshot {
-  id            String @id @default(uuid())
-  transactionId String
-  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  id            String           @id @default(uuid())
+  transactionId String           @map("transaction_id")
+  transaction   Transaction      @relation(fields: [transactionId], references: [id])
   version       Int
-  lockedAt      DateTime?
+  lockedAt      DateTime?        @map("locked_at")
   totals        Json
   checksum      String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime         @default(now()) @map("created_at")
   lines         AllocationLine[]
+  Payment       Payment[]
+
+  @@map("allocation_snapshots")
 }
 
 model AllocationLine {
-  id            String @id @default(uuid())
-  snapshotId    String
-  snapshot      AllocationSnapshot @relation(fields: [snapshotId], references: [id])
-  participantId String
-  participant   TransactionParticipant @relation(fields: [participantId], references: [id])
-  subtotal      Decimal @db.Decimal(18, 2)
-  discountShare Decimal @db.Decimal(18, 2) @default("0.00")
-  feeShare      Decimal @db.Decimal(18, 2) @default("0.00")
-  roundingAdjustment Decimal @db.Decimal(18, 2) @default("0.00")
-  finalDue      Decimal @db.Decimal(18, 2)
+  id                 String                 @id @default(uuid())
+  snapshotId         String                 @map("snapshot_id")
+  snapshot           AllocationSnapshot     @relation(fields: [snapshotId], references: [id])
+  participantId      String                 @map("participant_id")
+  participant        TransactionParticipant @relation(fields: [participantId], references: [id])
+  subtotal           Decimal                @db.Decimal(18, 2)
+  discountShare      Decimal                @default("0.00") @map("discount_share") @db.Decimal(18, 2)
+  feeShare           Decimal                @default("0.00") @map("fee_share") @db.Decimal(18, 2)
+  roundingAdjustment Decimal                @default("0.00") @map("rounding_adjustment") @db.Decimal(18, 2)
+  finalDue           Decimal                @map("final_due") @db.Decimal(18, 2)
+
+  @@map("allocation_lines")
 }
 
 model Payment {
-  id            String @id @default(uuid())
-  participantId String
+  id            String                 @id @default(uuid())
+  participantId String                 @map("participant_id")
   participant   TransactionParticipant @relation(fields: [participantId], references: [id])
-  snapshotId    String
-  snapshot      AllocationSnapshot @relation(fields: [snapshotId], references: [id])
-  status        String @default("unpaid")
-  amountPaid    Decimal @db.Decimal(18, 2) @default("0.00")
-  paidAt        DateTime?
+  snapshotId    String                 @map("snapshot_id")
+  snapshot      AllocationSnapshot     @relation(fields: [snapshotId], references: [id])
+  status        String                 @default("unpaid")
+  amountPaid    Decimal                @default("0.00") @map("amount_paid") @db.Decimal(18, 2)
+  paidAt        DateTime?              @map("paid_at")
   method        String?
   reference     String?
+
+  @@map("payments")
 }
 
 model EvidenceArtifact {
-  id        String  @id @default(uuid())
-  ownerId   String?
-  owner     User?   @relation(fields: [ownerId], references: [id])
-  objectPtr String
+  id        String   @id @default(uuid())
+  ownerId   String?  @map("owner_id")
+  owner     User?    @relation(fields: [ownerId], references: [id])
+  objectPtr String   @map("object_ptr")
   meta      Json?
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("evidence_artifacts")
 }
 
 model AuditLog {
-  id         String @id @default(uuid())
-  eventType  String
-  actorId    String?
+  id         String   @id @default(uuid())
+  eventType  String   @map("event_type")
+  actorId    String?  @map("actor_id")
   timestamp  DateTime @default(now())
-  objectType String?
-  objectId   String?
+  objectType String?  @map("object_type")
+  objectId   String?  @map("object_id")
   diff       Json?
+
+  @@map("audit_logs")
 }
