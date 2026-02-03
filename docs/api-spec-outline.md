@@ -16,8 +16,8 @@
 - **/api/payments**
   - POST /api/snapshots/{snapshotId}/payments — submit payment
   - POST /api/payments/{id}/verify — verify by finance/auditor
-- **/api/evidence**
-  - POST /api/payments/{id}/evidence — upload evidence pointer
+- **/api/evidence** (requires auth)
+  - POST /api/payments/{id}/evidence — upload evidence pointer (creates EvidenceArtifact owned by authenticated user)
 - **/api/reports**
   - GET /api/reports/transactions — export CSV/JSON
 - **/api/auth**

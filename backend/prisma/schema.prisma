@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  username   String   @unique
+  npp        String?
+  passwordHash String
+  name       String
+  phone      String?
+  createdAt  DateTime @default(now())
+  lastLogin  DateTime?
+  participants TransactionParticipant[]
+  evidenceArtifacts EvidenceArtifact[]
+}
+
+model Merchant {
+  id   String @id @default(uuid())
+  name String @unique
+  transactions Transaction[]
+}
+
+model Transaction {
+  id              String   @id @default(uuid())
+  merchantId      String
+  merchant        Merchant @relation(fields: [merchantId], references: [id])
+  orderedAt       DateTime
+  currency        String
+  notes           String?
+  state           String   @default("DRAFT")
+  currentVersion  Int?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  participants    TransactionParticipant[]
+  items           OrderItem[]
+  discounts       Discount[]
+  fees            AdditionalFee[]
+  snapshots       AllocationSnapshot[]
+}
+
+model TransactionParticipant {
+  id            String       @id @default(uuid())
+  transactionId String
+  transaction   Transaction  @relation(fields: [transactionId], references: [id])
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  role          String
+  confirmed     Boolean      @default(false)
+  allocationLines AllocationLine[]
+  payments      Payment[]
+}
+
+model OrderItem {
+  id                  String  @id @default(uuid())
+  transactionId       String
+  transaction         Transaction @relation(fields: [transactionId], references: [id])
+  name                String
+  normalPrice         Decimal @db.Decimal(18, 2)
+  qty                 Int
+  ownerParticipantId  String?
+}
+
+model Discount {
+  id            String  @id @default(uuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  type          String
+  scope         String
+  percent       Decimal? @db.Decimal(6, 4)
+  amount        Decimal? @db.Decimal(18, 2)
+  priority      Int      @default(0)
+  enabled       Boolean  @default(true)
+}
+
+model AdditionalFee {
+  id            String  @id @default(uuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  type          String?
+  amount        Decimal @db.Decimal(18, 2)
+  allocationMethod String
+}
+
+model AllocationSnapshot {
+  id            String @id @default(uuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  version       Int
+  lockedAt      DateTime?
+  totals        Json
+  checksum      String?
+  createdAt     DateTime @default(now())
+  lines         AllocationLine[]
+}
+
+model AllocationLine {
+  id            String @id @default(uuid())
+  snapshotId    String
+  snapshot      AllocationSnapshot @relation(fields: [snapshotId], references: [id])
+  participantId String
+  participant   TransactionParticipant @relation(fields: [participantId], references: [id])
+  subtotal      Decimal @db.Decimal(18, 2)
+  discountShare Decimal @db.Decimal(18, 2) @default("0.00")
+  feeShare      Decimal @db.Decimal(18, 2) @default("0.00")
+  roundingAdjustment Decimal @db.Decimal(18, 2) @default("0.00")
+  finalDue      Decimal @db.Decimal(18, 2)
+}
+
+model Payment {
+  id            String @id @default(uuid())
+  participantId String
+  participant   TransactionParticipant @relation(fields: [participantId], references: [id])
+  snapshotId    String
+  snapshot      AllocationSnapshot @relation(fields: [snapshotId], references: [id])
+  status        String @default("unpaid")
+  amountPaid    Decimal @db.Decimal(18, 2) @default("0.00")
+  paidAt        DateTime?
+  method        String?
+  reference     String?
+}
+
+model EvidenceArtifact {
+  id        String  @id @default(uuid())
+  ownerId   String?
+  owner     User?   @relation(fields: [ownerId], references: [id])
+  objectPtr String
+  meta      Json?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String @id @default(uuid())
+  eventType  String
+  actorId    String?
+  timestamp  DateTime @default(now())
+  objectType String?
+  objectId   String?
+  diff       Json?
+}
